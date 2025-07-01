@@ -15,16 +15,16 @@ const defaultOptions = {
 const omitUndefined = omitBy(isUndefined);
 
 class ServerlessOfflineS3 {
-  constructor(serverless, cliOptions, { log }) {
+  constructor(serverless, cliOptions, {log}) {
     this.cliOptions = null;
     this.options = null;
     this.s3 = null;
     this.lambda = null;
     this.serverless = null;
-    this.log = log;
 
     this.cliOptions = cliOptions;
     this.serverless = serverless;
+    this.log = log;
 
     this.hooks = {
       'offline:start:init': this.start.bind(this),
@@ -139,7 +139,7 @@ class ServerlessOfflineS3 {
       omitUndefined(this.cliOptions)
     );
 
-    this.log.debug('options:', this.options);
+    this.log.debug('s3 options:', this.options);
   }
 
   _getEvents() {
