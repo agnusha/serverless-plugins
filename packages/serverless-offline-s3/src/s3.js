@@ -1,8 +1,6 @@
 const Minio = require('minio');
 const {assign, toNumber} = require('lodash/fp');
 
-const log = require('@serverless/utils/log').log;
-
 const S3EventDefinition = require('./s3-event-definition');
 const S3Event = require('./s3-event');
 
@@ -12,7 +10,7 @@ const delay = timeout =>
   });
 
 class S3 {
-  constructor(lambda, resources, options) {
+  constructor(lambda, resources, options, log) {
     this.lambda = null;
     this.resources = null;
     this.options = null;
@@ -20,6 +18,7 @@ class S3 {
     this.lambda = lambda;
     this.resources = resources;
     this.options = options;
+    this.log = log;
 
     const s3Endpoint = this.options.endpoint ? new URL(this.options.endpoint) : {};
     this.client = new Minio.Client(
@@ -66,7 +65,7 @@ class S3 {
 
               await lambdaFunction.runHandler();
             } catch (err) {
-              log.warn(err.stack);
+              this.log.warning(err.stack);
             }
           }
         });
@@ -114,7 +113,7 @@ class S3 {
 
           await lambdaFunction.runHandler();
         } catch (err) {
-          log.warn(err.stack);
+          this.log.warning(err.stack);
         }
       }
     });
