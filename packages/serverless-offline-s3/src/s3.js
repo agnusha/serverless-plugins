@@ -10,7 +10,7 @@ const delay = timeout =>
   });
 
 class S3 {
-  constructor(lambda, resources, options, {log}) {
+  constructor(lambda, resources, options, log) {
     this.lambda = null;
     this.resources = null;
     this.options = null;
