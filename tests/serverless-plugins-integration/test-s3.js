@@ -20,18 +20,16 @@ const client = new Minio.Client({
 const uploadFiles = async () => {
   await delay(1000);
 
-  await Promise.all([
-    client.fPutObject('documents', 'first.txt', PATH),
-    client.fPutObject('pictures', 'first.txt', PATH),
-    client.fPutObject('files', 'first.txt', PATH),
-    client.fPutObject('documents', 'second.txt', PATH),
-    client.fPutObject('pictures', 'second.txt', PATH),
-    client.fPutObject('files', 'second.txt', PATH),
-    client.fPutObject('others', 'correct/test.txt', PATH),
-    client.fPutObject('others', 'wrong/test.csv', PATH),
-    client.fPutObject('others', 'correct/test.csv', PATH),
-    client.fPutObject('others', 'wrong/test.txt', PATH)
-  ]);
+  await client.fPutObject('documents', 'first.txt', PATH);
+  await client.fPutObject('documents', 'second.txt', PATH);
+  await client.fPutObject('pictures', 'first.txt', PATH);
+  await client.fPutObject('pictures', 'second.txt', PATH);
+  await client.fPutObject('files', 'first.txt', PATH);
+  await client.fPutObject('files', 'second.txt', PATH);
+  await client.fPutObject('others', 'correct/test.txt', PATH);
+  await client.fPutObject('others', 'wrong/test.csv', PATH);
+  await client.fPutObject('others', 'correct/test.csv', PATH);
+  await client.fPutObject('others', 'wrong/test.txt', PATH);
 };
 
 const serverless = spawn('sls', ['offline', 'start', '--config', 'serverless.s3.yml'], {
