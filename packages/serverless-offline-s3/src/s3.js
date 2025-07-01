@@ -10,7 +10,7 @@ const delay = timeout =>
   });
 
 class S3 {
-  constructor(lambda, resources, options, log) {
+  constructor(lambda, resources, options, {log}) {
     this.lambda = null;
     this.resources = null;
     this.options = null;
@@ -48,17 +48,20 @@ class S3 {
     return Promise.all(
       this.events.map(async ({functionKey, s3}) => {
         const {event, bucket, rules} = s3;
-        await this._waitFor(bucket);
+        this.log.debug(`Setting up listener for bucket: ${bucket}, event: ${event}`);
 
+        await this._waitFor(bucket);
         const eventRules = rules || [];
         const prefix = (eventRules.find(rule => rule.prefix) || {prefix: '*'}).prefix;
         const suffix = (eventRules.find(rule => rule.suffix) || {suffix: '*'}).suffix;
-
         const listener = this.client.listenBucketNotification(bucket, prefix, suffix, [event]);
 
         listener.on('notification', async record => {
           if (record) {
             try {
+              this.log.debug(
+                `Received S3 notification for bucket ${bucket}: ${JSON.stringify(record)}`
+              );
               const lambdaFunction = this.lambda.get(functionKey);
 
               const s3Notification = new S3Event(record);
@@ -66,12 +69,19 @@ class S3 {
 
               await lambdaFunction.runHandler();
             } catch (err) {
-              this.log.warning(err.stack);
+              this.log.warning(
+                `Error processing S3 notification for bucket ${bucket}: ${err.stack}`
+              );
             }
           }
         });
 
+        listener.on('error', err => {
+          this.log.warning(`Error in S3 listener for bucket ${bucket}: ${err.message}`);
+        });
+
         this.listeners = [...this.listeners, listener];
+        this.log.debug(`Listener set up successfully for bucket: ${bucket}`);
       })
     );
   }
