@@ -11,7 +11,6 @@ const {
   toString,
   values
 } = require('lodash/fp');
-const log = require('@serverless/utils/log').log;
 const {default: PQueue} = require('p-queue');
 const SQSEventDefinition = require('./sqs-event-definition');
 const SQSEvent = require('./sqs-event');
@@ -22,10 +21,11 @@ const delay = timeout =>
   });
 
 class SQS {
-  constructor(lambda, resources, options) {
+  constructor(lambda, resources, options, log) {
     this.lambda = null;
     this.resources = null;
     this.options = null;
+    this.log = log;
 
     this.lambda = lambda;
     this.resources = resources;
@@ -138,7 +138,7 @@ class SQS {
             )
           );
         } catch (err) {
-          log.warning(err.stack);
+          this.log.warning(err.stack);
         }
       }
 
@@ -170,7 +170,7 @@ class SQS {
     } catch (err) {
       if (remainingTry > 0 && err.name === 'AWS.SimpleQueueService.NonExistentQueue')
         return this._createQueue({queueName}, remainingTry - 1);
-      log.warning(err.stack);
+      this.log.warning(err.stack);
     }
   }
 }
