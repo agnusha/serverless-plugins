@@ -13,14 +13,47 @@ const client = new SQS({
   secretAccessKey: 'local',
   endpoint: 'http://localhost:9324',
   httpOptions: {
-    connectTimeout: 4000,
-    timeout: 8000
-  }
+    connectTimeout: 10000,
+    timeout: 15000
+  },
+  maxRetries: 5
 });
+
+async function ensureQueueExists(queueName) {
+  try {
+    console.log(`Checking if queue ${queueName} exists...`);
+    const queueUrl = `http://localhost:9324/queue/${queueName}`;
+    await client
+      .getQueueAttributes({
+        QueueUrl: queueUrl,
+        AttributeNames: ['QueueArn']
+      })
+      .promise();
+
+    return true;
+  } catch (err) {
+    console.error(`Queue ${queueName} does not exist or is not accessible: ${err.message}`);
+    return false;
+  }
+}
 
 const sendMessages = async () => {
   console.debug('Sending messages to SQS queues...');
 
+  console.log('Checking SQS availability...');
+  await delay(1000);
+
+  const queues = [
+    'MyFirstQueue',
+    'MySecondQueue',
+    'MyThirdQueue',
+    'MyFourthQueue',
+    'MyLargestBatchSizeQueue'
+  ];
+
+  await Promise.all(queues.map(queue => ensureQueueExists(queue)));
+
+  console.log('Sending message to MyFirstQueue');
   await client
     .sendMessage({
       QueueUrl: 'http://localhost:9324/queue/MyFirstQueue',
@@ -29,43 +62,55 @@ const sendMessages = async () => {
         myAttribute: {DataType: 'String', StringValue: 'myAttribute'}
       }
     })
-    .promise();
-  await delay(1000);
+    .promise()
+    .catch(err => console.error('Error sending to MyFirstQueue:', err.message));
+  await delay(2000);
 
+  console.log('Sending message to MySecondQueue');
   await client
     .sendMessage({
       QueueUrl: 'http://localhost:9324/queue/MySecondQueue',
       MessageBody: 'MySecondMessage'
     })
-    .promise();
-  await delay(1000);
+    .promise()
+    .catch(err => console.error('Error sending to MySecondQueue:', err.message));
+  await delay(2000);
 
+  console.log('Sending message to MyThirdQueue');
   await client
     .sendMessage({
       QueueUrl: 'http://localhost:9324/queue/MyThirdQueue',
       MessageBody: 'MyThirdMessage'
     })
-    .promise();
-  await delay(1000);
+    .promise()
+    .catch(err => console.error('Error sending to MyThirdQueue:', err.message));
+  await delay(2000);
 
+  console.log('Sending message to MyFourthQueue');
   await client
     .sendMessage({
       QueueUrl: 'http://localhost:9324/queue/MyFourthQueue',
       MessageBody: 'MyFourthMessage'
     })
-    .promise();
-  await delay(1000);
+    .promise()
+    .catch(err => console.error('Error sending to MyFourthQueue:', err.message));
+  await delay(2000);
 
+  console.log('Sending batch messages to MyLargestBatchSizeQueue');
   const batchEntries = Array.from({length: 10}).map((_, index) => ({
     Id: `msg-${index}`,
     MessageBody: 'MyLargestBatchSizeQueue'
   }));
+
   await client
     .sendMessageBatch({
       QueueUrl: 'http://localhost:9324/queue/MyLargestBatchSizeQueue',
       Entries: batchEntries
     })
-    .promise();
+    .promise()
+    .catch(err => console.error('Error sending batch to MyLargestBatchSizeQueue:', err.message));
+
+  console.log('All messages sent successfully');
 };
 
 const serverless = spawn('sls', ['offline', 'start', '--config', 'serverless.sqs.yml'], {
@@ -87,7 +132,9 @@ function incrementCounter(eventId) {
 
   lambdaCallCount++;
   console.log(`Lambda call count: ${lambdaCallCount}/${EXPECTED_LAMBDA_CALLS}`);
+
   if (lambdaCallCount >= EXPECTED_LAMBDA_CALLS) {
+    console.log('All expected lambda calls received, shutting down');
     serverless.kill();
   }
 }
@@ -118,7 +165,24 @@ function processSqsEvent(output) {
   }
 }
 
-serverless.stdout.on('data', data => processSqsEvent(data.toString()));
+serverless.stdout.on('data', data => {
+  const output = data.toString();
+  console.log(`STDOUT: ${output.trim()}`);
+  processSqsEvent(output);
+});
+
+serverless.stderr.on('data', data => {
+  console.log(`STDERR: ${data.toString().trim()}`);
+});
+
+serverless.on('close', code => {
+  process.exit(code || 0);
+});
+
+onExit((code, signal) => {
+  if (signal) serverless.kill(signal);
+});
+
 pump(
   serverless.stderr,
   getSplitLinesTransform(),
@@ -132,9 +196,3 @@ pump(
     }
   })
 );
-
-serverless.on('close', code => process.exit(code));
-
-onExit((code, signal) => {
-  if (signal) serverless.kill(signal);
-});
