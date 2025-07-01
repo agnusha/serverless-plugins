@@ -1,7 +1,5 @@
 const {get, isUndefined, omitBy, pick} = require('lodash/fp');
 
-const log = require('@serverless/utils/log').log;
-
 const S3 = require('./s3');
 
 const OFFLINE_OPTION = 'serverless-offline';
@@ -17,12 +15,13 @@ const defaultOptions = {
 const omitUndefined = omitBy(isUndefined);
 
 class ServerlessOfflineS3 {
-  constructor(serverless, cliOptions) {
+  constructor(serverless, cliOptions, { log }) {
     this.cliOptions = null;
     this.options = null;
     this.s3 = null;
     this.lambda = null;
     this.serverless = null;
+    this.log = log;
 
     this.cliOptions = cliOptions;
     this.serverless = serverless;
@@ -52,7 +51,7 @@ class ServerlessOfflineS3 {
 
     await Promise.all(eventModules);
 
-    this.serverless.cli.log(
+    this.log.notice(
       `Starting Offline S3 at stage ${this.options.stage} (${this.options.endPoint}/${this.options.region})`
     );
   }
@@ -68,7 +67,7 @@ class ServerlessOfflineS3 {
 
     signals.map(signal =>
       process.on(signal, async () => {
-        this.serverless.cli.log(`Got ${signal} signal. Offline Halting...`);
+        this.log.notice(`Got ${signal} signal. Offline Halting...`);
 
         await this.end();
       })
@@ -85,7 +84,7 @@ class ServerlessOfflineS3 {
       return;
     }
 
-    this.serverless.cli.log('Halting offline server');
+    this.log.notice('Halting offline server');
 
     const eventModules = [];
 
@@ -114,7 +113,7 @@ class ServerlessOfflineS3 {
   async _createS3(events, skipStart) {
     const resources = this._getResources();
 
-    this.s3 = new S3(this.lambda, resources, this.options);
+    this.s3 = new S3(this.lambda, resources, this.options, this.log);
 
     await this.s3.create(events);
 
@@ -140,7 +139,7 @@ class ServerlessOfflineS3 {
       omitUndefined(this.cliOptions)
     );
 
-    log.debug('options:', this.options);
+    this.log.debug('options:', this.options);
   }
 
   _getEvents() {
