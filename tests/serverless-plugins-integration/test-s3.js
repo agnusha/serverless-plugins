@@ -71,15 +71,14 @@ function processS3Event(output) {
     const jsonStart = output.indexOf('{');
     if (jsonStart < 0) return;
 
-    const jsonStr = output.slice(Math.max(0, jsonStart));
+    const jsonEnd = output.lastIndexOf('}');
+    if (jsonEnd <= jsonStart) return;
+
+    const jsonStr = output.slice(jsonStart, jsonEnd + 1);
+
     const eventData = JSON.parse(jsonStr);
-
     if (!eventData || !eventData.Records || eventData.Records.length === 0) return;
-
-    const eventId = eventData.Records[0].s3
-      ? `${eventData.Records[0].s3.bucket.name}-${eventData.Records[0].s3.object.key}`
-      : null;
-
+    const eventId = `${eventData.Records[0].s3.bucket.name}-${eventData.Records[0].s3.object.key}`;
     incrementlambdaCallCounter(eventId);
   } catch (err) {
     console.error('Error in processS3Event:', {err, output});
@@ -88,6 +87,10 @@ function processS3Event(output) {
 
 serverless.stdout.on('data', data => {
   processS3Event(data.toString());
+});
+
+serverless.stderr.on('data', data => {
+  console.log(`STDERR: ${data.toString().trim()}`);
 });
 
 pump(
