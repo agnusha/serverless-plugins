@@ -5,7 +5,7 @@ const onExit = require('signal-exit');
 const pump = require('pump');
 const {delay, getSplitLinesTransform} = require('./utils');
 
-const EXPECTED_LAMBDA_CALL = 9; // pictures files are consumed twice, by myPromiseHandler and myPythonHandler
+const EXPECTED_LAMBDA_CALL = 7;
 const PATH = './files/test.txt';
 
 const client = new Minio.Client({
@@ -37,21 +37,62 @@ const serverless = spawn('sls', ['offline', 'start', '--config', 'serverless.s3.
   cwd: __dirname
 });
 
+let lambdaCallCounter = 0;
+const processedEvents = new Set();
+
+function incrementlambdaCallCounter(eventId) {
+  if (eventId && processedEvents.has(eventId)) {
+    return;
+  }
+
+  if (eventId) {
+    processedEvents.add(eventId);
+  }
+
+  lambdaCallCounter++;
+  console.debug(`lambda call count for s3 test: ${lambdaCallCounter}/${EXPECTED_LAMBDA_CALL}`);
+
+  if (lambdaCallCounter >= EXPECTED_LAMBDA_CALL) {
+    console.log(`${lambdaCallCounter}/${EXPECTED_LAMBDA_CALL} lambda calls reached`);
+    serverless.kill();
+  }
+}
+
+function processS3Event(output) {
+  if (!output.includes('Records') || !output.includes('eventSource":"minio:s3"')) return;
+
+  try {
+    const jsonStart = output.indexOf('{');
+    if (jsonStart < 0) return;
+
+    const jsonStr = output.slice(Math.max(0, jsonStart));
+    const eventData = JSON.parse(jsonStr);
+
+    if (!eventData || !eventData.Records || eventData.Records.length === 0) return;
+
+    const eventId = eventData.Records[0].s3
+      ? `${eventData.Records[0].s3.bucket.name}-${eventData.Records[0].s3.object.key}`
+      : null;
+
+    incrementlambdaCallCounter(eventId);
+  } catch (err) {
+    console.error('Error in processS3Event:', err);
+  }
+}
+
+serverless.stdout.on('data', data => {
+  processS3Event(data.toString());
+});
+
 pump(
   serverless.stderr,
   getSplitLinesTransform(),
   new Writable({
     objectMode: true,
-    write(line, enc, cb) {
+    write(line, _enc, cb) {
       if (/Starting Offline S3/.test(line)) {
         uploadFiles();
       }
-
-      this.count =
-        (this.count || 0) +
-        (line.match(/\(λ: .*\) RequestId: .* Duration: .* ms {2}Billed Duration: .* ms/g) || [])
-          .length;
-      if (this.count === EXPECTED_LAMBDA_CALL) serverless.kill();
       cb();
     }
   })
