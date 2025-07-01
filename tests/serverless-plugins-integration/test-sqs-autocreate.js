@@ -9,7 +9,11 @@ const client = new SQS({
   region: 'eu-west-1',
   accessKeyId: 'local',
   secretAccessKey: 'local',
-  endpoint: 'http://localhost:9324'
+  endpoint: 'http://localhost:9324',
+  httpOptions: {
+    connectTimeout: 5000,
+    timeout: 10000
+  }
 });
 
 const sendMessages = () => {
