@@ -22,10 +22,16 @@ const uploadFiles = async () => {
 
   await client.fPutObject('documents', 'first.txt', PATH);
   await client.fPutObject('documents', 'second.txt', PATH);
+  await delay(1000);
+
   await client.fPutObject('pictures', 'first.txt', PATH);
   await client.fPutObject('pictures', 'second.txt', PATH);
+  await delay(1000);
+
   await client.fPutObject('files', 'first.txt', PATH);
   await client.fPutObject('files', 'second.txt', PATH);
+  await delay(1000);
+
   await client.fPutObject('others', 'correct/test.txt', PATH);
   await client.fPutObject('others', 'wrong/test.csv', PATH);
   await client.fPutObject('others', 'correct/test.csv', PATH);
