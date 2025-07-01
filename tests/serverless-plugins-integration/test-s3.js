@@ -82,7 +82,7 @@ function processS3Event(output) {
 
     incrementlambdaCallCounter(eventId);
   } catch (err) {
-    console.error('Error in processS3Event:', err);
+    console.error('Error in processS3Event:', {err, output});
   }
 }
 
