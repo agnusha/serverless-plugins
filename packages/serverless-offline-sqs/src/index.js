@@ -36,10 +36,10 @@ class ServerlessOfflineSQS {
     this.sqs = null;
     this.lambda = null;
     this.serverless = null;
-    this.log = log;
 
     this.cliOptions = cliOptions;
     this.serverless = serverless;
+    this.log = log;
 
     this.hooks = {
       'offline:start:init': this.start.bind(this),
@@ -154,7 +154,7 @@ class ServerlessOfflineSQS {
       omitUndefined(this.cliOptions)
     );
 
-    this.log.debug('options:', this.options);
+    this.log.debug('sqs options:', this.options);
   }
 
   _getEvents() {

@@ -25,11 +25,11 @@ class SQS {
     this.lambda = null;
     this.resources = null;
     this.options = null;
-    this.log = log;
 
     this.lambda = lambda;
     this.resources = resources;
     this.options = options;
+    this.log = log;
 
     this.client = new SQSClient(this.options);
 
