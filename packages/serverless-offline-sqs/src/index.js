@@ -33,6 +33,7 @@ class ServerlessOfflineSQS {
   constructor(serverless, cliOptions, {log}) {
     this.cliOptions = null;
     this.options = null;
+    this.log = null;
     this.sqs = null;
     this.lambda = null;
     this.serverless = null;

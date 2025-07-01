@@ -21,6 +21,7 @@ class ServerlessOfflineS3 {
     this.s3 = null;
     this.lambda = null;
     this.serverless = null;
+    this.log = null;
 
     this.cliOptions = cliOptions;
     this.serverless = serverless;

@@ -14,6 +14,7 @@ class S3 {
     this.lambda = null;
     this.resources = null;
     this.options = null;
+    this.log = null;
 
     this.lambda = lambda;
     this.resources = resources;
