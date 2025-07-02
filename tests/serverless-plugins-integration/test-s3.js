@@ -68,18 +68,23 @@ function processS3Event(output) {
   if (!output.includes('Records') || !output.includes('eventSource":"minio:s3"')) return;
 
   try {
-    const jsonStart = output.indexOf('{');
-    if (jsonStart < 0) return;
+    output
+      .split('\n')
+      .filter(line => line.includes('Records') && line.includes('eventSource":"minio:s3"'))
+      .forEach(line => {
+        const jsonStart = line.indexOf('{');
+        if (jsonStart < 0) return;
 
-    const jsonEnd = output.lastIndexOf('}');
-    if (jsonEnd <= jsonStart) return;
+        const jsonEnd = line.lastIndexOf('}');
+        if (jsonEnd <= jsonStart) return;
 
-    const jsonStr = output.slice(jsonStart, jsonEnd + 1);
+        const jsonStr = line.slice(jsonStart, jsonEnd + 1);
 
-    const eventData = JSON.parse(jsonStr);
-    if (!eventData || !eventData.Records || eventData.Records.length === 0) return;
-    const eventId = `${eventData.Records[0].s3.bucket.name}-${eventData.Records[0].s3.object.key}`;
-    incrementlambdaCallCounter(eventId);
+        const eventData = JSON.parse(jsonStr);
+        if (!eventData || !eventData.Records || eventData.Records.length === 0) return;
+        const eventId = `${eventData.Records[0].s3.bucket.name}-${eventData.Records[0].s3.object.key}`;
+        incrementlambdaCallCounter(eventId);
+      });
   } catch (err) {
     console.error('Error in processS3Event:', {err, output});
   }
