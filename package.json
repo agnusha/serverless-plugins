@@ -1,5 +1,5 @@
 {
-  "name": "serverless-plugins",
+  "name": "@cribl/serverless-plugins",
   "private": true,
   "engines": {
     "node": ">=18"

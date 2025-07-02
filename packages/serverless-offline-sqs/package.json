@@ -1,6 +1,6 @@
 {
-  "name": "serverless-offline-sqs",
-  "version": "8.0.0",
+  "name": "serverless-offline-sqs-next",
+  "version": "9.0.0",
   "description": "Emulate AWS λ and SQS locally when developing your Serverless project",
   "main": "src",
   "repository": {
@@ -20,7 +20,8 @@
   "author": "Arthur Weber @godu",
   "maintainers": [
     "Arthur Weber @godu",
-    "Adrien Becchis @AdrieanKhisbe"
+    "Adrien Becchis @AdrieanKhisbe",
+    "Ahniya Staravoitava @astaravoitava"
   ],
   "license": "MIT",
   "engines": {
