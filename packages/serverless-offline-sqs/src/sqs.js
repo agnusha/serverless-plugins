@@ -7,6 +7,7 @@ const {
   isPlainObject,
   mapValues,
   matches,
+  omit,
   pipe,
   toString,
   values
@@ -158,7 +159,7 @@ class SQS {
 
   async _createQueue({queueName}, remainingTry = 5) {
     try {
-      const properties = this._getResourceProperties(queueName);
+      const properties = omit(['QueueName'])(this._getResourceProperties(queueName));
       await this.client
         .createQueue({
           QueueName: queueName,
