@@ -1,8 +1,6 @@
 const Minio = require('minio');
 const {assign, toNumber} = require('lodash/fp');
 
-const log = require('@serverless/utils/log').log;
-
 const S3EventDefinition = require('./s3-event-definition');
 const S3Event = require('./s3-event');
 
@@ -11,15 +9,23 @@ const delay = timeout =>
     setTimeout(resolve, timeout);
   });
 
+const defaultLog = {
+  debug: console.debug.bind(console),
+  notice: console.log.bind(console),
+  warning: console.warn.bind(console)
+};
+
 class S3 {
-  constructor(lambda, resources, options) {
+  constructor(lambda, resources, options, log = defaultLog) {
     this.lambda = null;
     this.resources = null;
     this.options = null;
+    this.log = null;
 
     this.lambda = lambda;
     this.resources = resources;
     this.options = options;
+    this.log = log || defaultLog;
 
     const s3Endpoint = this.options.endpoint ? new URL(this.options.endpoint) : {};
     this.client = new Minio.Client(
@@ -32,6 +38,14 @@ class S3 {
 
     this.events = [];
     this.listeners = [];
+  }
+
+  _safeLog(level, message) {
+    if (this.log && typeof this.log[level] === 'function') {
+      this.log[level](message);
+    } else if (console[level]) {
+      console[level](message);
+    }
   }
 
   create(events) {
@@ -48,17 +62,20 @@ class S3 {
     return Promise.all(
       this.events.map(async ({functionKey, s3}) => {
         const {event, bucket, rules} = s3;
-        await this._waitFor(bucket);
+        this.log.debug(`Setting up listener for bucket: ${bucket}, event: ${event}`);
 
+        await this._waitFor(bucket);
         const eventRules = rules || [];
         const prefix = (eventRules.find(rule => rule.prefix) || {prefix: '*'}).prefix;
         const suffix = (eventRules.find(rule => rule.suffix) || {suffix: '*'}).suffix;
-
         const listener = this.client.listenBucketNotification(bucket, prefix, suffix, [event]);
 
         listener.on('notification', async record => {
           if (record) {
             try {
+              this.log.debug(
+                `Received S3 notification for bucket ${bucket}: ${JSON.stringify(record)}`
+              );
               const lambdaFunction = this.lambda.get(functionKey);
 
               const s3Notification = new S3Event(record);
@@ -66,17 +83,24 @@ class S3 {
 
               await lambdaFunction.runHandler();
             } catch (err) {
-              log.warn(err.stack);
+              this.log.warning(
+                `Error processing S3 notification for bucket ${bucket}: ${err.stack}`
+              );
             }
           }
         });
 
+        listener.on('error', err => {
+          this.log.warning(`Error in S3 listener for bucket ${bucket}: ${err.message}`);
+        });
+
         this.listeners = [...this.listeners, listener];
+        this.log.debug(`Listener set up successfully for bucket: ${bucket}`);
       })
     );
   }
 
-  stop(timeout) {
+  stop(_timeout) {
     this.listeners.forEach(listener => listener.stop());
     this.listeners = [];
   }
@@ -114,7 +138,7 @@ class S3 {
 
           await lambdaFunction.runHandler();
         } catch (err) {
-          log.warn(err.stack);
+          this._safeLog('warning', err.stack);
         }
       }
     });
