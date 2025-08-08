@@ -11,7 +11,6 @@ const {
   toString,
   values
 } = require('lodash/fp');
-const log = require('@serverless/utils/log').log;
 const {default: PQueue} = require('p-queue');
 const SQSEventDefinition = require('./sqs-event-definition');
 const SQSEvent = require('./sqs-event');
@@ -21,19 +20,35 @@ const delay = timeout =>
     setTimeout(resolve, timeout);
   });
 
+const defaultLog = {
+  debug: console.debug.bind(console),
+  notice: console.log.bind(console),
+  warning: console.warn.bind(console)
+};
+
 class SQS {
-  constructor(lambda, resources, options) {
+  constructor(lambda, resources, options, log = defaultLog) {
     this.lambda = null;
     this.resources = null;
     this.options = null;
+    this.log = null;
 
     this.lambda = lambda;
     this.resources = resources;
     this.options = options;
+    this.log = log || defaultLog;
 
     this.client = new SQSClient(this.options);
 
     this.queue = new PQueue({autoStart: false});
+  }
+
+  _safeLog(level, message) {
+    if (this.log && typeof this.log[level] === 'function') {
+      this.log[level](message);
+    } else if (console[level]) {
+      console[level](message);
+    }
   }
 
   create(events) {
@@ -138,7 +153,7 @@ class SQS {
             )
           );
         } catch (err) {
-          log.warning(err.stack);
+          this._safeLog('warning', err.stack);
         }
       }
 
@@ -170,7 +185,7 @@ class SQS {
     } catch (err) {
       if (remainingTry > 0 && err.name === 'AWS.SimpleQueueService.NonExistentQueue')
         return this._createQueue({queueName}, remainingTry - 1);
-      log.warning(err.stack);
+      this._safeLog('warning', err.stack);
     }
   }
 }
