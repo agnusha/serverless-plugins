@@ -26,6 +26,22 @@ plugins:
 
 [See example](../../tests/serverless-plugins-integration/README.md#sqs)
 
+## Migrating from v8 to v9
+
+This version requires Serverless Framework v4 and serverless-offline v14.4.0+.
+
+### Breaking Changes
+
+- Requires `serverless-offline: "^14.4.0 || >=14"`
+- Uses new Serverless v4 plugin API for logging
+- Node.js 18+ required
+
+### Upgrade Steps
+
+1. Update serverless to v4: `npm install serverless@^4.0.0`
+2. Update serverless-offline to v14.4.0+: `npm install serverless-offline@^14.4.0`
+3. Update this plugin: `npm install serverless-offline-sqs@^9.0.0`
+
 ## How it works?
 
 To be able to emulate AWS SQS queue on local machine there should be some queue system actually running. One of the existing implementations suitable for the task is [ElasticMQ](https://github.com/adamw/elasticmq).

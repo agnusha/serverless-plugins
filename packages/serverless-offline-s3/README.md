@@ -26,6 +26,22 @@ plugins:
 
 [See example](../../tests/serverless-plugins-integration/README.md#s3)
 
+## Migrating from v7 to v8
+
+This version requires Serverless Framework v4 and serverless-offline v14.4.0+.
+
+### Breaking Changes
+
+- Requires `serverless-offline: "^14.4.0 || >=14"`
+- Uses new Serverless v4 plugin API for logging
+- Node.js 18+ required
+
+### Upgrade Steps
+
+1. Update serverless to v4: `npm install serverless@^4.0.0`
+2. Update serverless-offline to v14.4.0+: `npm install serverless-offline@^14.4.0`
+3. Update this plugin: `npm install serverless-offline-s3@^8.0.0`
+
 ## How it works?
 
 To be able to emulate AWS S3 Bucket on local machine there should be some bucket system actually running. One of the existing implementations suitable for the task is [Minio](https://github.com/minio/minio).
