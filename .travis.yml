@@ -3,7 +3,7 @@ sudo: required
 language: node_js
 
 node_js:
-  - "20"
+  - "20.18.1"
   - "18"
 
 services:
