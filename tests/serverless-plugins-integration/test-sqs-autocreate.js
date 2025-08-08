@@ -3,37 +3,45 @@ const {spawn} = require('child_process');
 const onExit = require('signal-exit');
 const {SQS} = require('aws-sdk');
 const pump = require('pump');
-const {getSplitLinesTransform} = require('./utils');
+const {delay, getSplitLinesTransform} = require('./utils');
+
+const EXPECTED_LAMBDA_CALLS = 3;
 
 const client = new SQS({
   region: 'eu-west-1',
   accessKeyId: 'local',
   secretAccessKey: 'local',
-  endpoint: 'http://localhost:9324'
+  endpoint: 'http://localhost:9324',
+  httpOptions: {
+    connectTimeout: 4000,
+    timeout: 8000
+  }
 });
 
-const sendMessages = () => {
-  return Promise.all([
-    client
-      .sendMessage({
-        QueueUrl: 'http://localhost:9324/queue/AutocreatedImplicitQueue',
-        MessageBody: 'AutocreatedImplicitQueue'
-      })
-      .promise(),
-    client
-      .sendMessage({
-        QueueUrl: 'http://localhost:9324/queue/AutocreatedQueue',
-        MessageBody: 'AutocreatedQueue'
-      })
-      .promise(),
-    client
-      .sendMessage({
-        QueueUrl: 'http://localhost:9324/queue/AutocreatedFifoQueue.fifo',
-        MessageBody: 'AutocreatedFifoQueue',
-        MessageGroupId: '1'
-      })
-      .promise()
-  ]);
+const sendMessages = async () => {
+  await client
+    .sendMessage({
+      QueueUrl: 'http://localhost:9324/queue/AutocreatedImplicitQueue',
+      MessageBody: 'AutocreatedImplicitQueue'
+    })
+    .promise();
+
+  await delay(1000);
+  await client
+    .sendMessage({
+      QueueUrl: 'http://localhost:9324/queue/AutocreatedQueue',
+      MessageBody: 'AutocreatedQueue'
+    })
+    .promise();
+  await delay(1000);
+
+  await client
+    .sendMessage({
+      QueueUrl: 'http://localhost:9324/queue/AutocreatedFifoQueue.fifo',
+      MessageBody: 'AutocreatedFifoQueue',
+      MessageGroupId: '1'
+    })
+    .promise();
 };
 
 const serverless = spawn('sls', ['offline', 'start', '--config', 'serverless.sqs.autocreate.yml'], {
@@ -41,26 +49,64 @@ const serverless = spawn('sls', ['offline', 'start', '--config', 'serverless.sqs
   cwd: __dirname
 });
 
+let lambdaCallCount = 0;
+const processedEvents = new Set();
+
+function incrementCounter(eventId) {
+  if (eventId && processedEvents.has(eventId)) {
+    return;
+  }
+
+  if (eventId) {
+    processedEvents.add(eventId);
+  }
+
+  lambdaCallCount++;
+  console.debug(`SQS-autocreate: Lambda call count: ${lambdaCallCount}/${EXPECTED_LAMBDA_CALLS}`);
+
+  if (lambdaCallCount >= EXPECTED_LAMBDA_CALLS) {
+    console.log(
+      `${lambdaCallCount}/${EXPECTED_LAMBDA_CALLS} lambda calls reached for sqs-autocreate test`
+    );
+    serverless.kill();
+  }
+}
+
+function processSqsEvent(output) {
+  if (!output.includes('"eventSource":"aws:sqs"')) return;
+
+  try {
+    const jsonStart = output.indexOf('{');
+    if (jsonStart < 0) return;
+
+    const jsonStr = output.slice(Math.max(0, jsonStart));
+    const eventData = JSON.parse(jsonStr);
+
+    if (!eventData || !eventData.Records || eventData.Records.length === 0) return;
+
+    const queueName = eventData.Records[0].eventSourceARN.split(':').pop();
+    const eventId = `${queueName}-${eventData.Records[0].messageId}`;
+
+    incrementCounter(eventId);
+  } catch (err) {
+    console.error('Error in processSqsEvent:', err);
+  }
+}
+
+serverless.stdout.on('data', data => {
+  const output = data.toString();
+  processSqsEvent(output);
+});
+
 pump(
   serverless.stderr,
   getSplitLinesTransform(),
   new Writable({
     objectMode: true,
-    write(line, enc, cb) {
-      console.log(line.toString());
+    write(line, _enc, cb) {
       if (/Starting Offline SQS/.test(line)) {
-        sendMessages()
-          .then(() => console.log('sucessfully send messages'))
-          .catch(err => {
-            console.log('Some issue sending message:s', err.message);
-          });
+        sendMessages();
       }
-
-      this.count =
-        (this.count || 0) +
-        (line.match(/\(λ: .*\) RequestId: .* Duration: .* ms {2}Billed Duration: .* ms/g) || [])
-          .length;
-      if (this.count === 3) serverless.kill();
       cb();
     }
   })
@@ -96,6 +142,6 @@ serverless.on('close', code => {
     });
 });
 
-onExit((code, signal) => {
+onExit((_code, signal) => {
   if (signal) serverless.kill(signal);
 });

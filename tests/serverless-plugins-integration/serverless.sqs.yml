@@ -47,6 +47,10 @@ functions:
 
 resources:
   Resources:
+    MyThirdQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: MyThirdQueue
     MyFourthQueue:
       Type: AWS::SQS::Queue
       Properties:
